@@ -1,0 +1,3 @@
+disk_to_partition: "/dev/sdc"  # Replace with the appropriate disk identifier (e.g., /dev/sdb)
+partition_size: "3GiB"           # Replace with the desired size for the partition (e.g., 10G)
+mount_point: "/tmp/logs"
