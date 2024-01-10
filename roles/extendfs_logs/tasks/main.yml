@@ -1,6 +1,5 @@
 ---
 - name: Configure Disk
-  hosts: hola
   become: true
   vars:
     disk_to_partition: "/dev/sdc"  # Replace with the appropriate disk identifier (e.g., /dev/sdb)
