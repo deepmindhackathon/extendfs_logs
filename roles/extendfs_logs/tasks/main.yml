@@ -1,47 +1,39 @@
 ---
-- name: Configure Disk
-  become: true
-  vars:
-    disk_to_partition: "/dev/sdc"  # Replace with the appropriate disk identifier (e.g., /dev/sdb)
-    partition_size: "3GiB"           # Replace with the desired size for the partition (e.g., 10G)
-    mount_point: "/tmp/logs"
+- name: Find a disk with no partitions
+  command: "parted {{ disk_to_partition }} print"
+  ignore_errors: true
+  register: parted_output
 
-  tasks:
-    - name: Find a disk with no partitions
-      command: "parted {{ disk_to_partition }} print"
-      ignore_errors: true
-      register: parted_output
+- name: Create partition if no partitions found
+  parted:
+    device: "{{ disk_to_partition }}"
+    label: gpt
+    number: 1
+    state: present
+    part_end: "{{ partition_size }}"
+    #when: "'No such file or directory' in parted_output.stderr"
 
-    - name: Create partition if no partitions found
-      parted:
-        device: "{{ disk_to_partition }}"
-        label: gpt
-        number: 1
-        state: present
-        part_end: "{{ partition_size }}"
-        #when: "'No such file or directory' in parted_output.stderr"
+- name: Format the partition
+  filesystem:
+    fstype: ext4
+    dev: "{{ disk_to_partition }}1"
+  when: "'No such file or directory' not in parted_output.stderr"
 
-    - name: Format the partition
-      filesystem:
-        fstype: ext4
-        dev: "{{ disk_to_partition }}1"
-      when: "'No such file or directory' not in parted_output.stderr"
+- name: Create mount directory
+  file:
+    path: "{{ mount_point }}"
+    state: directory
 
-    - name: Create mount directory
-      file:
-        path: "{{ mount_point }}"
-        state: directory
+- name: Add entry to /etc/fstab
+  lineinfile:
+    path: "/etc/fstab"
+    line: "{{ disk_to_partition }}1   {{ mount_point }}   ext4   defaults   0   2"
+  when: "'No such file or directory' not in parted_output.stderr"
 
-    - name: Add entry to /etc/fstab
-      lineinfile:
-        path: "/etc/fstab"
-        line: "{{ disk_to_partition }}1   {{ mount_point }}   ext4   defaults   0   2"
-      when: "'No such file or directory' not in parted_output.stderr"
-
-    - name: Mount the partition
-      mount:
-        path: "{{ mount_point }}"
-        src: "{{ disk_to_partition }}1"
-        fstype: ext4
-        state: mounted
-      when: "'No such file or directory' not in parted_output.stderr"
+- name: Mount the partition
+  mount:
+    path: "{{ mount_point }}"
+    src: "{{ disk_to_partition }}1"
+    fstype: ext4
+    state: mounted
+  when: "'No such file or directory' not in parted_output.stderr"
